@@ -292,8 +292,8 @@
     <div class="pagination" id="pagination"></div>
 
     <script>
-        // ⚠️ آدرس API خود را اینجا قرار دهید
-        const API_URL = 'https://script.google.com/macros/s/AKfycbxS8cudffMatrLTfksTXk3r3UDU2_v-LETDVj4BgXwIsYp_3pXclOoUd19N7V2Cwdb-PQ/exec';
+        // ⚠️ آدرس API خود را اینجا قرار دهید (حتماً با /exec تمام شود)
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzaJ70knffYjmB05AMH0r7TFJl8x2dwTCGQn16Edd7KyWyyQvsd3OkAs6QdT3Oo1OBx8g/exec';
 
         let currentPage = 1;
         let totalPages = 1;
@@ -463,10 +463,8 @@
             }
         });
 
-        // ============= تغییر اصلی اینجا =============
-        // بارگذاری خودکار حذف شد!
-        // به جای آن، صفحه با پیام خوش‌آمدگویی نمایش داده می‌شود.
-        // کاربر باید دکمه جستجو را بزند تا داده بارگذاری شود.
+        // ============= بارگذاری اولیه =============
+        // صفحه با پیام خوش‌آمدگویی نمایش داده می‌شود (بدون بارگذاری خودکار)
         showWelcome();
     </script>
 
