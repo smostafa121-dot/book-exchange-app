@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مرکز تبادل کتاب قم</title>
+    <!-- اتصال به SDK ایتا -->
+    <script src="https://developer.eitaa.com/eitaa-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Vazir', 'IRANSans', sans-serif;
+            padding: 16px;
+            direction: rtl;
+            background: #f5f7fa;
+            color: #2c3e50;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a365d, #2b6cb0);
+            color: white;
+            padding: 20px 16px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .header p {
+            font-size: 14px;
+            opacity: 0.85;
+            margin-top: 4px;
+        }
+        .book {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-right: 4px solid #2b6cb0;
+            transition: all 0.2s;
+        }
+        .book:active {
+            transform: scale(0.98);
+        }
+        .book h3 {
+            font-size: 16px;
+            color: #1a365d;
+            margin-bottom: 6px;
+        }
+        .book .author {
+            font-size: 13px;
+            color: #4a5568;
+            margin-bottom: 4px;
+        }
+        .book .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #718096;
+        }
+        .book .meta span {
+            background: #edf2f7;
+            padding: 2px 10px;
+            border-radius: 20px;
+        }
+        .book .price {
+            font-weight: 700;
+            color: #2b6cb0;
+            font-size: 15px;
+        }
+        .book .discount {
+            background: #e53e3e;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px 0;
+            color: #718096;
+        }
+        .loading::after {
+            content: " ...";
+            animation: dots 1.5s steps(4) infinite;
+        }
+        @keyframes dots {
+            0% { content: " ..."; }
+            25% { content: " ."; }
+            50% { content: " .."; }
+            75% { content: " ..."; }
+        }
+        .error-box {
+            background: #fff5f5;
+            border: 1px solid #feb2b2;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            color: #c53030;
+        }
+        .error-box button {
+            margin-top: 12px;
+            padding: 10px 24px;
+            background: #2b6cb0;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .empty-box {
+            text-align: center;
+            padding: 40px 0;
+            color: #718096;
+        }
+        .badge {
+            display: inline-block;
+            background: #48bb78;
+            color: white;
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 20px;
+            margin-right: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>📚 مرکز تبادل کتاب قم</h1>
+        <p>جریان دوبارهٔ کتاب</p>
+    </div>
+
+    <div id="book-list">
+        <div class="loading">در حال بارگذاری کتاب‌ها</div>
+    </div>
+
+    <script>
+        // ⚠️ آدرس API خود را اینجا قرار دهید
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzaJ70knffYjmB05AMH0r7TFJl8x2dwTCGQn16Edd7KyWyyQvsd3OkAs6QdT3Oo1OBx8g/exec';
+
+        const listDiv = document.getElementById('book-list');
+
+        fetch(API_URL)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('HTTP error ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // اگر داده آرایه نبود یا خالی بود
+                if (!Array.isArray(data) || data.length === 0) {
+                    listDiv.innerHTML = `
+                        <div class="empty-box">
+                            <p style="font-size:48px;">📖</p>
+                            <p>هیچ کتابی در لیست موجود نیست.</p>
+                            <p style="font-size:13px;color:#a0aec0;">کتاب‌ها را به گوگل‌شیت اضافه کنید.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                data.forEach((book, index) => {
+                    const title = book.title || book.عنوان || 'بدون عنوان';
+                    const author = book.author || book.نویسنده || 'نامشخص';
+                    const subject = book.subject || book.موضوع || 'عمومی';
+                    const price = book.price || book.قیمت || 0;
+                    const discount = book.discount || book.تخفیف || 0;
+
+                    // فرمت قیمت با کاما
+                    const formattedPrice = Number(price).toLocaleString('fa-IR');
+
+                    html += `
+                        <div class="book">
+                            <h3>${title}</h3>
+                            <div class="author">✍️ ${author}</div>
+                            <div class="meta">
+                                <span>📂 ${subject}</span>
+                                <span class="price">💰 ${formattedPrice} تومان</span>
+                                ${discount > 0 ? `<span class="discount">🔥 ${discount}% تخفیف</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                listDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('خطا:', error);
+                listDiv.innerHTML = `
+                    <div class="error-box">
+                        <p style="font-size:32px;">⚠️</p>
+                        <p><strong>خطا در دریافت اطلاعات</strong></p>
+                        <p style="font-size:13px;color:#718096;margin-top:4px;">${error.message}</p>
+                        <p style="font-size:12px;color:#a0aec0;margin-top:8px;">لطفاً مطمئن شوید که API به‌درستی Deploy شده است.</p>
+                        <button onclick="location.reload()">تلاش مجدد</button>
+                    </div>
+                `;
+            });
+    </script>
+
+</body>
+</html>
