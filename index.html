@@ -23,13 +23,12 @@
             text-align: center;
         }
         .header h1 { font-size: 22px; font-weight: 700; }
-        .header p { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+        .header p { font-size: 14px; opacity: 0.85; }
 
-        /* جعبه جستجو */
         .search-box {
             display: flex;
             gap: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
         .search-box input {
             flex: 1;
@@ -46,9 +45,6 @@
             border-color: #2b6cb0;
             box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15);
         }
-        .search-box input::placeholder {
-            color: #a0aec0;
-        }
 
         .book {
             background: white;
@@ -57,9 +53,8 @@
             margin-bottom: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             border-right: 4px solid #2b6cb0;
-            transition: all 0.2s;
         }
-        .book h3 { font-size: 16px; color: #1a365d; margin-bottom: 4px; }
+        .book h3 { font-size: 16px; color: #1a365d; }
         .book .author { font-size: 13px; color: #4a5568; }
         .book .meta {
             display: flex;
@@ -83,6 +78,51 @@
             font-size: 12px;
             font-weight: 700;
         }
+
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        .info-bar .count {
+            background: #edf2f7;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            padding: 8px 16px;
+            background: #edf2f7;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: #2b6cb0;
+            color: white;
+        }
+        .pagination button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .pagination .active {
+            background: #2b6cb0;
+            color: white;
+        }
+
         .loading { text-align: center; padding: 40px 0; color: #718096; }
         .error-box {
             background: #fff5f5;
@@ -93,15 +133,6 @@
             color: #c53030;
         }
         .empty-box { text-align: center; padding: 40px 0; color: #718096; }
-        .count-badge {
-            background: #edf2f7;
-            color: #4a5568;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 13px;
-            display: inline-block;
-            margin-bottom: 12px;
-        }
     </style>
 </head>
 <body>
@@ -111,96 +142,140 @@
         <p>جریان دوبارهٔ کتاب</p>
     </div>
 
-    <!-- جعبه جستجو -->
     <div class="search-box">
-        <input type="text" id="searchInput" placeholder="🔍 جستجوی عنوان، نویسنده یا موضوع ..." oninput="filterBooks()">
+        <input type="text" id="searchInput" placeholder="🔍 جستجوی عنوان، نویسنده یا موضوع ..." oninput="searchBooks()">
     </div>
 
     <div id="book-list">
         <div class="loading">در حال بارگذاری کتاب‌ها...</div>
     </div>
 
+    <div class="pagination" id="pagination"></div>
+
     <script>
         // ⚠️ آدرس API خود را اینجا قرار دهید
         const API_URL = 'https://script.google.com/macros/s/AKfycbzaJ70knffYjmB05AMH0r7TFJl8x2dwTCGQn16Edd7KyWyyQvsd3OkAs6QdT3Oo1OBx8g/exec';
 
-        let allBooks = []; // ذخیره همه کتاب‌ها برای فیلتر
+        let currentPage = 1;
+        let currentQuery = '';
+        let totalPages = 1;
+
         const listDiv = document.getElementById('book-list');
+        const paginationDiv = document.getElementById('pagination');
         const searchInput = document.getElementById('searchInput');
 
-        function renderBooks(books) {
-            if (!books || books.length === 0) {
-                listDiv.innerHTML = `
-                    <div class="empty-box">
-                        <p style="font-size:48px;">📖</p>
-                        <p>هیچ کتابی با این جستجو یافت نشد.</p>
-                    </div>
-                `;
-                return;
+        function loadBooks(page = 1, query = '') {
+            listDiv.innerHTML = '<div class="loading">در حال بارگذاری...</div>';
+            
+            let url = `${API_URL}?page=${page}&limit=20`;
+            if (query.trim()) {
+                url += `&q=${encodeURIComponent(query.trim())}`;
             }
 
-            let html = `<div class="count-badge">${books.length} کتاب یافت شد</div>`;
-            books.forEach(book => {
-                const title = book.title || book.عنوان || 'بدون عنوان';
-                const author = book.author || book.نویسنده || 'نامشخص';
-                const subject = book.subject || book.موضوع || 'عمومی';
-                const price = book.price || book.قیمت || 0;
-                const discount = book.discount || book.تخفیف || 0;
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error('HTTP error ' + response.status);
+                    return response.json();
+                })
+                .then(result => {
+                    if (result.error) {
+                        throw new Error(result.message);
+                    }
 
-                html += `
-                    <div class="book">
-                        <h3>${title}</h3>
-                        <div class="author">✍️ ${author}</div>
-                        <div class="meta">
-                            <span>📂 ${subject}</span>
-                            <span class="price">💰 ${Number(price).toLocaleString('fa-IR')} تومان</span>
-                            ${discount > 0 ? `<span class="discount">🔥 ${discount}% تخفیف</span>` : ''}
+                    const books = result.data || [];
+                    totalPages = result.totalPages || 1;
+                    currentPage = result.page || 1;
+
+                    // نمایش تعداد نتایج
+                    let infoHtml = `<div class="info-bar">
+                        <span class="count">${result.total} کتاب یافت شد</span>
+                        <span>صفحه ${result.page} از ${result.totalPages}</span>
+                    </div>`;
+
+                    if (books.length === 0) {
+                        listDiv.innerHTML = infoHtml + `<div class="empty-box"><p>📖 هیچ کتابی یافت نشد.</p></div>`;
+                        paginationDiv.innerHTML = '';
+                        return;
+                    }
+
+                    let booksHtml = '';
+                    books.forEach(book => {
+                        const title = book.title || book.عنوان || 'بدون عنوان';
+                        const author = book.author || book.نویسنده || 'نامشخص';
+                        const subject = book.subject || book.موضوع || 'عمومی';
+                        const price = book.price || book.قیمت || 0;
+                        const discount = book.discount || book.تخفیف || 0;
+
+                        booksHtml += `
+                            <div class="book">
+                                <h3>${title}</h3>
+                                <div class="author">✍️ ${author}</div>
+                                <div class="meta">
+                                    <span>📂 ${subject}</span>
+                                    <span class="price">💰 ${Number(price).toLocaleString('fa-IR')} تومان</span>
+                                    ${discount > 0 ? `<span class="discount">🔥 ${discount}% تخفیف</span>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    listDiv.innerHTML = infoHtml + booksHtml;
+                    renderPagination(result.totalPages, result.page);
+                })
+                .catch(error => {
+                    console.error('خطا:', error);
+                    listDiv.innerHTML = `
+                        <div class="error-box">
+                            <p>⚠️ خطا در دریافت اطلاعات</p>
+                            <p style="font-size:13px;">${error.message}</p>
+                            <button onclick="loadBooks(${currentPage}, '${currentQuery}')" style="margin-top:12px;padding:8px 20px;background:#2b6cb0;color:white;border:none;border-radius:6px;cursor:pointer;">تلاش مجدد</button>
                         </div>
-                    </div>
-                `;
-            });
-            listDiv.innerHTML = html;
+                    `;
+                    paginationDiv.innerHTML = '';
+                });
         }
 
-        function filterBooks() {
-            const query = searchInput.value.trim().toLowerCase();
-            if (!query) {
-                renderBooks(allBooks);
+        function renderPagination(totalPages, currentPage) {
+            if (totalPages <= 1) {
+                paginationDiv.innerHTML = '';
                 return;
             }
-            const filtered = allBooks.filter(book => {
-                const title = (book.title || book.عنوان || '').toLowerCase();
-                const author = (book.author || book.نویسنده || '').toLowerCase();
-                const subject = (book.subject || book.موضوع || '').toLowerCase();
-                return title.includes(query) || author.includes(query) || subject.includes(query);
-            });
-            renderBooks(filtered);
+
+            let html = '';
+            // دکمه قبلی
+            html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>قبلی</button>`;
+
+            // نمایش صفحات
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) {
+                    html += `<button class="active" disabled>${i}</button>`;
+                } else if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) {
+                    html += `<button onclick="goToPage(${i})">${i}</button>`;
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    html += `<button disabled>...</button>`;
+                }
+            }
+
+            // دکمه بعدی
+            html += `<button onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>بعدی</button>`;
+
+            paginationDiv.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            loadBooks(page, currentQuery);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function searchBooks() {
+            const query = searchInput.value;
+            currentQuery = query;
+            loadBooks(1, query);
         }
 
         // بارگذاری اولیه
-        fetch(API_URL)
-            .then(response => {
-                if (!response.ok) throw new Error('HTTP error ' + response.status);
-                return response.json();
-            })
-            .then(data => {
-                if (!Array.isArray(data) || data.length === 0) {
-                    listDiv.innerHTML = `<div class="empty-box"><p>📖 هیچ کتابی موجود نیست.</p></div>`;
-                    return;
-                }
-                allBooks = data;
-                renderBooks(allBooks);
-            })
-            .catch(error => {
-                console.error('خطا:', error);
-                listDiv.innerHTML = `
-                    <div class="error-box">
-                        <p>⚠️ خطا در دریافت اطلاعات</p>
-                        <p style="font-size:13px;">${error.message}</p>
-                        <button onclick="location.reload()" style="margin-top:12px;padding:8px 20px;background:#2b6cb0;color:white;border:none;border-radius:6px;cursor:pointer;">تلاش مجدد</button>
-                    </div>
-                `;
-            });
+        loadBooks(1, '');
     </script>
 
 </body>
