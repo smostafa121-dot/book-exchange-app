@@ -25,25 +25,79 @@
         .header h1 { font-size: 22px; font-weight: 700; }
         .header p { font-size: 14px; opacity: 0.85; }
 
-        .search-box {
+        /* فرم جستجو */
+        .search-form {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 16px;
+        }
+        .search-row {
             display: flex;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
-        .search-box input {
+        .search-row input {
             flex: 1;
-            padding: 12px 16px;
+            padding: 10px 14px;
             border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            font-size: 16px;
-            background: white;
-            transition: all 0.2s;
+            border-radius: 10px;
+            font-size: 15px;
             font-family: inherit;
+            transition: all 0.2s;
         }
-        .search-box input:focus {
+        .search-row input:focus {
             outline: none;
             border-color: #2b6cb0;
-            box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15);
+            box-shadow: 0 0 0 3px rgba(43,108,176,0.15);
+        }
+        .search-row button {
+            padding: 10px 20px;
+            background: #2b6cb0;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .search-row button:hover {
+            background: #1a365d;
+        }
+        .search-row button:active {
+            transform: scale(0.96);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filter-row select {
+            flex: 1;
+            min-width: 100px;
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            background: white;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .filter-row select:focus {
+            outline: none;
+            border-color: #2b6cb0;
+        }
+        .filter-row label {
+            font-size: 13px;
+            color: #4a5568;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .book {
@@ -86,6 +140,8 @@
             margin-bottom: 12px;
             font-size: 14px;
             color: #4a5568;
+            flex-wrap: wrap;
+            gap: 8px;
         }
         .info-bar .count {
             background: #edf2f7;
@@ -133,6 +189,17 @@
             color: #c53030;
         }
         .empty-box { text-align: center; padding: 40px 0; color: #718096; }
+
+        /* ریسپانسیو */
+        @media (max-width: 480px) {
+            .search-row {
+                flex-direction: column;
+            }
+            .filter-row select {
+                min-width: 80px;
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -142,8 +209,40 @@
         <p>جریان دوبارهٔ کتاب</p>
     </div>
 
-    <div class="search-box">
-        <input type="text" id="searchInput" placeholder="🔍 جستجوی عنوان، نویسنده یا موضوع ..." oninput="searchBooks()">
+    <!-- فرم جستجو -->
+    <div class="search-form">
+        <div class="search-row">
+            <input type="text" id="searchInput" placeholder="🔍 کلمه مورد نظر را وارد کنید ...">
+            <button onclick="searchBooks()">🔍 جستجو</button>
+        </div>
+        <div class="filter-row">
+            <label>
+                جستجو در:
+                <select id="searchField">
+                    <option value="all">همه موارد</option>
+                    <option value="title">عنوان</option>
+                    <option value="author">نویسنده</option>
+                    <option value="subject">موضوع</option>
+                </select>
+            </label>
+            <label>
+                مرتب‌سازی بر اساس:
+                <select id="sortField">
+                    <option value="title">عنوان</option>
+                    <option value="author">نویسنده</option>
+                    <option value="subject">موضوع</option>
+                    <option value="price">قیمت</option>
+                    <option value="discount">تخفیف</option>
+                </select>
+            </label>
+            <label>
+                ترتیب:
+                <select id="sortOrder">
+                    <option value="asc">صعودی</option>
+                    <option value="desc">نزولی</option>
+                </select>
+            </label>
+        </div>
     </div>
 
     <div id="book-list">
@@ -154,23 +253,41 @@
 
     <script>
         // ⚠️ آدرس API خود را اینجا قرار دهید
-        const API_URL = 'https://script.google.com/macros/s/AKfycbyPg1ioHfkZtDY1diQ5xX7yfoia2Hi9ZSuAGZRbTfYW5THA7-tgNjPqp3-Qi5PSOl4e9Q/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxS8cudffMatrLTfksTXk3r3UDU2_v-LETDVj4BgXwIsYp_3pXclOoUd19N7V2Cwdb-PQ/exec';
 
         let currentPage = 1;
-        let currentQuery = '';
         let totalPages = 1;
+        let currentQuery = '';
+        let currentField = 'all';
+        let currentSort = 'title';
+        let currentOrder = 'asc';
 
         const listDiv = document.getElementById('book-list');
         const paginationDiv = document.getElementById('pagination');
         const searchInput = document.getElementById('searchInput');
+        const searchField = document.getElementById('searchField');
+        const sortField = document.getElementById('sortField');
+        const sortOrder = document.getElementById('sortOrder');
 
-        function loadBooks(page = 1, query = '') {
+        function searchBooks() {
+            currentQuery = searchInput.value.trim();
+            currentField = searchField.value;
+            currentSort = sortField.value;
+            currentOrder = sortOrder.value;
+            currentPage = 1;
+            loadBooks();
+        }
+
+        function loadBooks() {
             listDiv.innerHTML = '<div class="loading">در حال بارگذاری...</div>';
             
-            let url = `${API_URL}?page=${page}&limit=20`;
-            if (query.trim()) {
-                url += `&q=${encodeURIComponent(query.trim())}`;
+            let url = `${API_URL}?page=${currentPage}&limit=20`;
+            if (currentQuery) {
+                url += `&q=${encodeURIComponent(currentQuery)}`;
             }
+            url += `&field=${currentField}`;
+            url += `&sort=${currentSort}`;
+            url += `&order=${currentOrder}`;
 
             fetch(url)
                 .then(response => {
@@ -186,14 +303,13 @@
                     totalPages = result.totalPages || 1;
                     currentPage = result.page || 1;
 
-                    // نمایش تعداد نتایج
                     let infoHtml = `<div class="info-bar">
                         <span class="count">${result.total} کتاب یافت شد</span>
                         <span>صفحه ${result.page} از ${result.totalPages}</span>
                     </div>`;
 
                     if (books.length === 0) {
-                        listDiv.innerHTML = infoHtml + `<div class="empty-box"><p>📖 هیچ کتابی یافت نشد.</p></div>`;
+                        listDiv.innerHTML = infoHtml + `<div class="empty-box"><p>📖 هیچ کتابی با این جستجو یافت نشد.</p></div>`;
                         paginationDiv.innerHTML = '';
                         return;
                     }
@@ -228,7 +344,7 @@
                         <div class="error-box">
                             <p>⚠️ خطا در دریافت اطلاعات</p>
                             <p style="font-size:13px;">${error.message}</p>
-                            <button onclick="loadBooks(${currentPage}, '${currentQuery}')" style="margin-top:12px;padding:8px 20px;background:#2b6cb0;color:white;border:none;border-radius:6px;cursor:pointer;">تلاش مجدد</button>
+                            <button onclick="loadBooks()" style="margin-top:12px;padding:8px 20px;background:#2b6cb0;color:white;border:none;border-radius:6px;cursor:pointer;">تلاش مجدد</button>
                         </div>
                     `;
                     paginationDiv.innerHTML = '';
@@ -242,10 +358,8 @@
             }
 
             let html = '';
-            // دکمه قبلی
             html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>قبلی</button>`;
 
-            // نمایش صفحات
             for (let i = 1; i <= totalPages; i++) {
                 if (i === currentPage) {
                     html += `<button class="active" disabled>${i}</button>`;
@@ -256,7 +370,6 @@
                 }
             }
 
-            // دکمه بعدی
             html += `<button onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>بعدی</button>`;
 
             paginationDiv.innerHTML = html;
@@ -264,18 +377,21 @@
 
         function goToPage(page) {
             if (page < 1 || page > totalPages) return;
-            loadBooks(page, currentQuery);
+            currentPage = page;
+            loadBooks();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function searchBooks() {
-            const query = searchInput.value;
-            currentQuery = query;
-            loadBooks(1, query);
-        }
+        // پشتیبانی از کلید Enter برای جستجو
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchBooks();
+            }
+        });
 
         // بارگذاری اولیه
-        loadBooks(1, '');
+        loadBooks();
     </script>
 
 </body>
